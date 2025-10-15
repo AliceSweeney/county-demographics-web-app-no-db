@@ -9,16 +9,26 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     states = get_state_options()
+    counties = get_county_options()
     #print(states)
-    return render_template('home.html', state_options=states)
+    return render_template('home.html', state_options=states, county_options=counties)
 
 @app.route('/showFact')
 def render_fact():
     states = get_state_options()
+    counties = get_county_options()
     state = request.args.get('state')
     county = county_most_under_18(state)
     fact = "In " + state + ", the county with the highest percentage of under 18 year olds is " + county + "."
-    return render_template('home.html', state_options=states, funFact=fact)
+    return render_template('home.html', state_options=states, funFact=fact, county_options=counties)
+@app.route('/showCountyFact')
+def render_county_fact():
+    states = get_state_options()
+    counties = get_county_options()
+    county = request.args.get('county')
+    ethnicity = highest_ethnicity(county)
+    countyFact = "In " + county + ", the ethnicity that is most common is " + ethnicity + "."
+    return render_template('home.html', state_options=states, county_options=counties, funCountyFact=countyFact)
     
 def get_state_options():
     """Return the html code for the drop down menu.  Each option is a state abbreviation from the demographic data."""
@@ -33,6 +43,19 @@ def get_state_options():
         options += Markup("<option value=\"" + s + "\">" + s + "</option>") #Use Markup so <, >, " are not escaped lt, gt, etc.
     return options
 
+def get_county_options():
+    """Return the html code for the drop down menu.  Each option is a county from the demographic data."""
+    with open('demographics.json') as demographics_data:
+        demo_data = json.load(demographics_data)
+    counties=[]
+    for c in demo_data:
+        if c["County"] not in counties:
+            counties.append(c["County"])
+    options=""
+    for x in counties:
+        options += Markup("<option value=\"" + x + "\">" + x + "</option>") #Use Markup so <, >, " are not escaped lt, gt, etc.
+    return options
+
 def county_most_under_18(state):
     """Return the name of a county in the given state with the highest percent of under 18 year olds."""
     with open('demographics.json') as demographics_data:
@@ -45,6 +68,22 @@ def county_most_under_18(state):
                 highest = c["Age"]["Percent Under 18 Years"]
                 county = c["County"]
     return county
+
+def highest_ethnicity(county):
+    """Return the name of an ethnicity in the given county that is most common"""
+    with open('demographics.json') as demographics_data:
+        demo_data = json.load(demographics_data)
+    highest=0
+    ethnicity = ""
+    cnty = ""
+    for c in demo_data:
+        if c["County"] == county:
+            cnty = c["County"]
+            for e in c["Ethnicities"]:
+                if c["Ethnicities"][e] > highest:
+                    highest = c["Ethnicities"][e]
+                    ethnicity = e
+    return ethnicity
 
 def is_localhost():
     """ Determines if app is running on localhost or not
